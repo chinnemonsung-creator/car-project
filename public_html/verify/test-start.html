@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Test Start API</title>
+</head>
+<body>
+  <h1>Test /verify/api/start.php</h1>
+  <input id="sid" value="SESS-TEST-UI-001" style="width:300px">
+  <button onclick="callStart()">Call Start</button>
+  <pre id="out">{}</pre>
+
+  <script>
+    async function callStart() {
+      const sid = document.getElementById('sid').value;
+      const res = await fetch('../verify/api/start.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sid })
+      });
+      const data = await res.json();
+      document.getElementById('out').textContent = JSON.stringify(data, null, 2);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <title>Test Orders API</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="font-family: ui-sans-serif, system-ui;">
+  <h1>Test POST /tbfadmin/public/api/v1/orders.php</h1>
+  <button id="sendBtn">ส่งข้อมูลตัวอย่าง</button>
+
+  <pre id="output" style="background:#f4f4f4; padding:1em; border:1px solid #ccc; margin-top:1em; white-space:pre-wrap;"></pre>
+
+  <script>
+    const API_BASE = "https://bellafleur-benly.com/tbfadmin/public/api/v1/";
+
+    document.getElementById('sendBtn').addEventListener('click', async () => {
+      const payload = {
+        citizen_id: "1103700xxxxxxx",
+        first_name: "Somchai",
+        last_name: "Dee",
+        vin: "MRHGN1650KP0xxxxx",
+        phone: "0891234567",
+        brand: "TOYOTA",
+        desired_plates: ["1กก1111","9ขข9999"]
+      };
+
+      try {
+        const res = await fetch(API_BASE + "orders.php", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const text = await res.text(); // เผื่อ backend ยังไม่ตั้ง header JSON
+        document.getElementById('output').textContent =
+          "Status: " + res.status + "\n\n" + text;
+      } catch (err) {
+        document.getElementById('output').textContent = "Error: " + err;
+      }
+    });
+  </script>
+</body>
+</html>

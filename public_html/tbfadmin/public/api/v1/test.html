@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>Test POST /tbfadmin/public/api/v1/orders.php</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body{font-family:system-ui,Segoe UI,Roboto,Arial;padding:24px;background:#f7f7f9}
+.card{max-width:860px;margin:auto;background:#fff;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.08);padding:20px}
+.row{display:grid;grid-template-columns:180px 1fr;gap:8px 12px;align-items:center}
+h1{margin:0 0 12px 0;font-size:20px}
+input,textarea,select{width:100%;padding:10px;border:1px solid #dfe3e8;border-radius:10px}
+label{font-size:13px;color:#666}
+.btn{padding:10px 14px;border:0;border-radius:10px;background:#111;color:#fff;cursor:pointer}
+.btn.sec{background:#0d6efd}
+.btn.ghost{background:#fff;color:#111;border:1px solid #dfe3e8}
+.bad{color:#b00020}
+pre{background:#0b1021;color:#d0d3e1;border-radius:12px;padding:14px;overflow:auto}
+small.muted{color:#6b7280}
+.grid2{display:flex;gap:8px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Test POST <code>/tbfadmin/public/api/v1/orders.php</code></h1>
+
+  <div class="row">
+    <label>API URL</label>
+    <input id="url" value="/tbfadmin/public/api/v1/orders.php">
+  </div>
+  <div class="row">
+    <label>Bearer Token (ถ้าตั้ง API_TOKEN)</label>
+    <input id="token" placeholder="ใส่ถ้าบังคับ token (หรือปล่อยว่างถ้า dev)">
+  </div>
+
+  <hr>
+
+  <div class="row"><label>first_name *</label><input id="first_name"></div>
+  <div class="row"><label>last_name *</label><input id="last_name"></div>
+  <div class="row"><label>phone</label><input id="phone" placeholder="ตัวเลข 9–12 หลัก เช่น 0812345678"></div>
+  <div class="row"><label>brand</label><input id="brand" placeholder="≤ 64 ตัว"></div>
+  <div class="row"><label>vin</label><input id="vin" placeholder="17 ตัว A-HJ-NPR-Z0-9"></div>
+  <div class="row"><label>citizen_id</label><input id="citizen_id" placeholder="เลข 13 หลัก"></div>
+  <div class="row"><label>desired_plates</label>
+    <textarea id="desired_plates" rows="2" placeholder="พิมพ์คั่นด้วย , หรือกด Enter แยกบรรทัด"></textarea>
+  </div>
+
+  <div class="grid2" style="margin:12px 0">
+    <button class="btn ghost" id="fill">กรอกตัวอย่างที่ผ่าน Validation</button>
+    <button class="btn ghost" id="validate">ตรวจข้อมูล (Validate)</button>
+    <button class="btn sec" id="send">ส่งคำขอ (JSON)</button>
+    <button class="btn" id="ping">GET ping</button>
+  </div>
+
+  <div id="status" class="small muted">Status: –</div>
+  <pre id="out">{}</pre>
+
+  <small class="muted">
+    422 = validation_failed (เช็ค fields ด้านบน)<br>
+    401 = ไม่มี/ผิด Token (ถ้าตั้ง API_TOKEN)<br>
+    500 = server/db error (เปิดไฟล์ล็อก <code>/tbfadmin/var/php_errors.log</code>)
+  </small>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const $url = $('#url'), $token = $('#token');
+const $fn = $('#first_name'), $ln = $('#last_name'), $ph = $('#phone');
+const $brand = $('#brand'), $vin = $('#vin'), $cit = $('#citizen_id'), $plates = $('#desired_plates');
+const $status = $('#status'), $out = $('#out');
+
+// endpoint แยกสำหรับ health-check (ไม่แตะ DB)
+const PING_URL = '/tbfadmin/public/api/v1/ping.php';
+
+$('#fill').onclick = () => {
+  $fn.value = 'Somchai';
+  $ln.value = 'Dee';
+  $ph.value = '0812345678';
+  $brand.value = 'Toyota';
+  $vin.value = 'JH4DB8590SS001561';
+  $cit.value = '1101700203451';
+  $plates.value = '1กก 1234, 9ขข 9999';
+};
+
+$('#ping').onclick = async () => {
+  $status.textContent = 'Status: ...';
+  const res = await fetch(PING_URL, { method:'GET', headers:{'Accept':'application/json'} });
+  $status.textContent = 'Status: ' + res.status;
+  $out.textContent = JSON.stringify(await res.json().catch(()=>({})), null, 2);
+};
+
+$('#validate').onclick = async () => {
+  const body = {
+    action: 'validate_order',
+    first_name: $fn.value.trim(),
+    last_name:  $ln.value.trim(),
+    phone:      $ph.value.trim(),
+    brand:      $brand.value.trim(),
+    vin:        $vin.value.trim(),
+    citizen_id: $cit.value.trim(),
+    desired_plates: $plates.value.trim()
+  };
+  const headers = {'Content-Type':'application/json','Accept':'application/json'};
+  const t = $token.value.trim();
+  if(t) headers['Authorization'] = 'Bearer ' + t;
+
+  $status.textContent = 'Status: ...';
+  try {
+    const res = await fetch($url.value, { method:'POST', headers, body: JSON.stringify(body) });
+    $status.textContent = 'Status: ' + res.status;
+    const j = await res.json().catch(()=>({}));
+    $out.textContent = JSON.stringify(j, null, 2);
+  } catch (e) {
+    $status.textContent = 'Status: network error';
+    $out.textContent = String(e);
+  }
+};
+
+$('#send').onclick = async () => {
+  const body = {
+    first_name: $fn.value.trim(),
+    last_name:  $ln.value.trim(),
+    phone:      $ph.value.trim(),
+    brand:      $brand.value.trim(),
+    vin:        $vin.value.trim(),
+    citizen_id: $cit.value.trim(),
+    desired_plates: $plates.value.trim()
+  };
+  const headers = {'Content-Type':'application/json','Accept':'application/json'};
+  const t = $token.value.trim();
+  if(t) headers['Authorization'] = 'Bearer ' + t;
+
+  $status.textContent = 'Status: ...';
+  try {
+    const res = await fetch($url.value, { method:'POST', headers, body: JSON.stringify(body) });
+    $status.textContent = 'Status: ' + res.status;
+    const j = await res.json().catch(()=>({}));
+    $out.textContent = JSON.stringify(j, null, 2);
+  } catch (e) {
+    $status.textContent = 'Status: network error';
+    $out.textContent = String(e);
+  }
+};
+</script>
+</body>
+</html>

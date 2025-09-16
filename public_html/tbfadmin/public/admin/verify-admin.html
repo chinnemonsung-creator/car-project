@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="th">
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Verify Admin Modal</title>
+<style>
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 20px; }
+  .btn { padding: 8px 12px; border: 1px solid #ccc; background:#fff; cursor:pointer; border-radius:8px; }
+  .btn:disabled { opacity:.5; cursor:not-allowed; }
+  .row { margin: 8px 0; }
+  #verifyModal {
+    display:none; position:fixed; inset:10% 20%; background:#fff;
+    border:1px solid #ddd; border-radius:12px; box-shadow:0 10px 40px rgba(0,0,0,.15);
+    padding:16px; z-index:9999;
+  }
+  #verifyBackdrop {
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.25); z-index:9998;
+  }
+  pre { background:#f7f7f8; border:1px solid #eee; padding:8px; border-radius:8px; overflow:auto; }
+  .grid { display:grid; grid-template-columns:140px 1fr; gap:8px 12px; align-items:center; }
+  .pill { display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid #ddd; }
+</style>
+
+<body>
+  <h2>แอดมิน: ตรวจสถานะ Verify (Modal)</h2>
+
+  <!-- ตัวอย่างปุ่มทดสอบ เปิด modal ด้วย SID -->
+  <div class="row">
+    SID:
+    <input id="sidInput" value="SESS-DEMO-1001" style="width:320px">
+    <button class="btn" onclick="openVerifyModal(document.querySelector('#sidInput').value)">เปิด Modal</button>
+    <a class="btn" href="/tbfadmin/public/admin/dashboard.php">กลับ Dashboard</a>
+  </div>
+
+  <!-- Backdrop + Modal -->
+  <div id="verifyBackdrop" onclick="closeVerifyModal()"></div>
+  <div id="verifyModal" role="dialog" aria-modal="true" aria-labelledby="title">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+      <h3 id="title" style="margin:0;">สถานะการยืนยันตัวตน</h3>
+      <button class="btn" onclick="closeVerifyModal()">ปิด</button>
+    </div>
+
+    <div class="row"></div>
+
+    <div class="grid">
+      <div>Sess</div>        <div><b id="m-sid">-</b></div>
+      <div>สถานะ</div>       <div><span id="m-status" class="pill">-</span></div>
+      <div>เหลือเวลา (s)</div><div><b id="m-ttl">-</b></div>
+      <div>Attempt</div>     <div><b id="m-attempt">-</b></div>
+    </div>
+
+    <div class="row" style="margin-top:12px; display:flex; gap:8px;">
+      <button id="m-renew" class="btn" disabled data-orig="ขอลิงก์ใหม่">ขอลิงก์ใหม่</button>
+      <button id="m-goto"  class="btn" disabled>เข้าสู่หน้าจอง DLT</button>
+    </div>
+
+    <div class="row">
+      <small>ผลลัพธ์ล่าสุด</small>
+      <pre id="m-out">{}</pre>
+    </div>
+  </div>
+
+<script>
+/** ====== CONFIG ====== **/
+const ENTRY_BASE = 'https://reserve.dlt.go.th/reserve/v2/?menu=resv_m&state=';
+const POLL_MS = 1500;
+const ADMIN_COOLDOWN_MS = 3000;
+
+/** ====== Utils ====== **/
+let modalPoll = null;
+let lastAdminStartAt = 0;
+const $ = (s)=>document.querySelector(s);
+
+async function apiStart(sid){
+  const r = await fetch('/verify/api/start.php', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({sid})
+  });
+  return r.json();
+}
+async function apiStatus(sid){
+  const r = await fetch('/verify/status.php?sid=' + encodeURIComponent(sid), {cache:'no-store'});
+  return r.json();
+}
+
+/** ====== Modal controls ====== **/
+function openVerifyModal(sid){
+  $('#m-sid').textContent = sid;
+  $('#verifyBackdrop').style.display = 'block';
+  $('#verifyModal').style.display = 'block';
+  startModalPoll(sid);
+
+  // bind once (safe rebind)
+  $('#m-renew').onclick = onRenewClick;
+  $('#m-goto').onclick  = onGotoClick;
+}
+function closeVerifyModal(){
+  $('#verifyBackdrop').style.display = 'none';
+  $('#verifyModal').style.display = 'none';
+  clearInterval(modalPoll); modalPoll = null;
+}
+
+/** ====== Render & Poll ====== **/
+function renderModalStatus(s){
+  if(!s || !s.ok) return;
+
+  $('#m-status').textContent  = s.status || '-';
+  $('#m-ttl').textContent     = (s.ttl_seconds ?? 0);
+  $('#m-attempt').textContent = s.attempt_no ?? '-';
+  $('#m-out').textContent     = JSON.stringify(s, null, 2);
+
+  // ปุ่ม Renew: ใช้ได้เมื่อ expired/failed
+  $('#m-renew').disabled = !(s.status === 'expired' || s.status === 'failed');
+
+  // ปุ่ม Goto DLT: ใช้ได้เมื่อ confirmed/success
+  $('#m-goto').disabled  = !(s.status === 'confirmed' || s.status === 'success');
+
+  // จบสถานะแล้วหยุด poll
+  if (['confirmed','success','expired','failed'].includes(s.status)) {
+    clearInterval(modalPoll); modalPoll = null;
+  }
+}
+function startModalPoll(sid){
+  clearInterval(modalPoll);
+  modalPoll = setInterval(async () => {
+    try {
+      const s = await apiStatus(sid);
+      renderModalStatus(s);
+    } catch(e){}
+  }, POLL_MS);
+}
+
+/** ====== Actions ====== **/
+async function onRenewClick(){
+  const sid = $('#m-sid').textContent.trim();
+  const now = Date.now();
+  if (now - lastAdminStartAt < ADMIN_COOLDOWN_MS) return;
+  lastAdminStartAt = now;
+
+  const btn = $('#m-renew');
+  btn.disabled = true;
+  const orig = btn.dataset.orig || 'ขอลิงก์ใหม่';
+  btn.textContent = 'กำลังขอลิงก์ใหม่…';
+
+  try {
+    const res = await apiStart(sid);
+    $('#m-out').textContent = JSON.stringify(res, null, 2);
+    // ไม่ redirect ฝั่งแอดมิน (ถ้าต้องการให้เปิด DLT สำหรับแอดมินเอง ค่อยเปิดลิงก์ได้)
+    // if (res.ok && res.entry_url) window.open(res.entry_url, '_blank');
+    startModalPoll(sid);
+  } catch(e) {
+    alert('Renew failed');
+  } finally {
+    btn.textContent = orig;
+    // จะเปิดปุ่มอีกครั้งโดยสถานะรอรอบใหม่ (pending/หมดอายุ) ผ่าน renderModalStatus()
+  }
+}
+
+function onGotoClick(){
+  const sid = $('#m-sid').textContent.trim();
+  window.open(ENTRY_BASE + sid, '_blank');
+}
+</script>
+</body>
+</html>

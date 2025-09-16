@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Orders — Dashboard (Mockup)</title>
+<style>
+  :root{
+    --bg:#f6f7fb; --card:#fff; --text:#2a2f35; --muted:#6b7280;
+    --primary:#2563eb; --primary-600:#1d4ed8; --danger:#dc2626; --success:#16a34a; --warning:#f59e0b;
+    --bd:#e5e7eb; --chip:#eef2ff;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.55 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
+  .container{max-width:1200px;margin:32px auto;padding:0 16px}
+  h1{margin:0 0 18px;font-size:24px;letter-spacing:.2px}
+
+  /* toolbar */
+  .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+  .input, .select{height:38px;border:1px solid var(--bd);border-radius:10px;padding:0 12px;background:#fff;color:var(--text);outline:none}
+  .input::placeholder{color:var(--muted)}
+  .btn{height:38px;border:0;border-radius:10px;padding:0 12px;display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;white-space:nowrap}
+  .btn-primary{background:var(--primary);color:#fff}
+  .btn-primary:hover{background:var(--primary-600)}
+  .btn-ghost{background:#fff;border:1px solid var(--bd);color:var(--text)}
+  .btn-danger{background:var(--danger);color:#fff}
+  .btn-outline{background:#fff;border:1px solid var(--primary);color:var(--primary)}
+  .btn-outline:hover{border-color:var(--primary-600);color:var(--primary-600)}
+
+  /* ทำปุ่มกว้างเสมอกันและอยู่บรรทัดเดียว */
+  .row-actions{display:flex;gap:8px;align-items:center;flex-wrap:nowrap}
+  .btn-eq{min-width:132px;justify-content:center}
+  @media (max-width:1020px){ .btn-eq{min-width:118px} }
+  @media (max-width:920px){ .row-actions{flex-wrap:wrap} .btn-eq{min-width:unset} }
+
+  /* card table */
+  .card{background:var(--card);border:1px solid var(--bd);border-radius:var(--radius);box-shadow:0 2px 8px rgba(0,0,0,.04)}
+  .card-header{padding:14px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between}
+  .table{width:100%;border-collapse:separate;border-spacing:0}
+  .table th,.table td{padding:10px 12px;border-bottom:1px solid var(--bd);text-align:left;vertical-align:middle}
+  .table th{font-size:13px;color:var(--muted);font-weight:700}
+  .table tr:hover td{background:#fafafa}
+
+  /* badge & chips */
+  .badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid transparent}
+  .b-pending{background:#fff7ed;border-color:#fed7aa;color:#b45309}
+  .b-success{background:#ecfdf5;border-color:#bbf7d0;color:#047857}
+  .b-expired{background:#fef2f2;border-color:#fecaca;color:#b91c1c}
+  .status-dot{width:8px;height:8px;border-radius:999px;display:inline-block}
+  .dot-pending{background:#f59e0b}
+  .dot-success{background:#16a34a}
+  .dot-expired{background:#dc2626}
+
+  /* ป้ายใน dashboard: 2 ต่อบรรทัด */
+  .plates{
+    display:grid;
+    grid-template-columns: repeat(2, max-content);
+    gap:6px 8px;
+    align-content:start;
+  }
+  .chip{background:var(--chip);border:1px solid #e0e7ff;color:#3730a3;padding:4px 8px;border-radius:999px;font-weight:600;font-size:12px}
+
+  /* modal */
+  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.28);padding:20px}
+  .modal.open{display:flex}
+  .dialog{width:min(1100px,96%);background:var(--card);border-radius:18px;border:1px solid var(--bd);box-shadow:0 10px 30px rgba(0,0,0,.2);overflow:hidden}
+  .dialog-header{padding:16px 18px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center}
+  .dialog-title{font-size:16px;font-weight:800}
+  .dialog-body{padding:18px;display:grid;grid-template-columns:1.4fr 1fr;gap:18px;align-items:start}
+  .section{border:1px dashed var(--bd);border-radius:14px;padding:14px;min-width:0}
+  .section h3{margin:0 0 10px;font-size:13px;color:#475569;text-transform:uppercase;letter-spacing:.6px}
+  .field{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+  .label{font-size:12px;color:var(--muted)}
+  .control{height:36px;border:1px solid var(--bd);border-radius:10px;padding:0 10px;background:#fff}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .dialog-footer{padding:16px 18px;border-top:1px solid var(--bd);display:flex;justify-content:flex-end;gap:10px;background:#fafafa}
+  @media (max-width:980px){
+    .dialog{ width:96%; }
+    .dialog-body{ grid-template-columns:1fr; }
+    .grid-3{ grid-template-columns:1fr 1fr; }
+  }
+
+  /* บังคับตำแหน่ง section */
+  .dialog-body .section:nth-of-type(1){ grid-column:1; } /* ลูกค้า */
+  .dialog-body .section:nth-of-type(2){ grid-column:2; } /* รถ */
+  .dialog-body .section:nth-of-type(3){ grid-column:1; } /* ป้าย */
+  .dialog-body .section:nth-of-type(4){ grid-column:2; } /* ระบบ */
+  .spacer{flex:1}
+
+/* === Shrink-to-fit buttons in actions row === */
+.btn-eq{
+  min-width: auto !important;   /* เลิกบังคับความกว้างเท่ากัน */
+}
+
+.cluster{                       /* กลุ่มปุ่มซ้าย */
+  flex: 1 1 auto;
+  gap: 8px;
+  flex-wrap: nowrap;            /* ให้เรียงบรรทัดเดียวก่อน */
+  min-width: 0;
+}
+
+.cluster .btn{                  /* ให้ปุ่มกว้างเท่าข้อความ */
+  flex: 0 0 auto;
+  padding-inline: 14px;         /* แคบลงเล็กน้อย */
+}
+
+.row-actions{
+  gap: 16px;                    /* เว้นระยะกับปุ่มลบ */
+  flex-wrap: nowrap;            /* คุมให้อยู่บรรทัดเดียว */
+}
+
+.row-actions > .btn-danger-outline{
+  flex: 0 0 auto;               /* ปุ่มลบกว้างตามข้อความ */
+}
+
+
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>Orders — Dashboard</h1>
+
+    <!-- toolbar -->
+    <div class="toolbar">
+      <input class="input" style="min-width:260px" placeholder="ค้นหา: ชื่อ / เบอร์โทร / ยี่ห้อ / ทะเบียน">
+      <select class="select">
+        <option>ทั้งหมด</option><option>Pending</option><option>Success</option><option>Expired</option>
+      </select>
+      <input class="input" type="date" />
+      <input class="input" type="date" />
+      <button class="btn btn-ghost">ค้นหา</button>
+      <div class="spacer"></div>
+      <button class="btn btn-primary" id="btnAdd">+ เพิ่มรายการ</button>
+    </div>
+
+    <!-- table -->
+    <div class="card">
+      <div class="card-header">
+        <div style="color:var(--muted);font-size:12px">คลิก “ดู/แก้ไข” หรือ “ส่งให้ลูกค้ายืนยัน” เพื่อจัดการออเดอร์</div>
+      </div>
+      <table class="table">
+        <thead>
+          <tr>
+            <th style="width:64px">ID</th>
+            <th>ลูกค้า</th>
+            <th style="width:120px">เบอร์โทร</th>
+            <th style="width:110px">ยี่ห้อ</th>
+            <th>ป้ายที่ต้องการ</th>
+            <th style="width:130px">สถานะ</th>
+            <th style="width:140px">สร้างเมื่อ</th>
+            <th style="width:460px">จัดการ</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Pending -->
+          <tr>
+            <td>122</td>
+            <td>Somchai Dee</td>
+            <td>0812345678</td>
+            <td>Toyota</td>
+            <td>
+              <div class="plates">
+                <span class="chip">1กก 1234</span>
+                <span class="chip">9ขข 9999</span>
+              </div>
+            </td>
+            <td><span class="badge b-pending"><span class="status-dot dot-pending"></span> Pending</span></td>
+            <td>2025-09-09 19:20</td>
+            <td class="row-actions">
+              <button class="btn btn-outline btn-eq" onclick="alert('ส่งให้ลูกค้ายืนยัน (mock)')">ส่งให้ลูกค้ายืนยัน</button>
+              <button class="btn btn-ghost btn-eq"   onclick="alert('ตรวจสถานะ (mock)')">ตรวจสถานะ</button>
+              <button class="btn btn-ghost btn-eq"   onclick="alert('ต่ออายุ (mock)')">ต่ออายุ</button>
+              <button class="btn btn-ghost btn-eq"   onclick="openModal('edit','#122 Somchai Dee')">ดู/แก้ไข</button>
+              <button class="btn btn-danger btn-eq"  onclick="alert('ลบ (mock)')">ลบ</button>
+            </td>
+          </tr>
+
+          <!-- Success -->
+          <tr>
+            <td>121</td>
+            <td>Supaporn Lee</td>
+            <td>0891112222</td>
+            <td>Honda</td>
+            <td><div class="plates"><span class="chip">7กก 7777</span></div></td>
+            <td><span class="badge b-success"><span class="status-dot dot-success"></span> Success</span></td>
+            <td>2025-09-09 18:05</td>
+            <td class="row-actions">
+              <button class="btn btn-outline btn-eq" onclick="alert('ส่งให้ลูกค้ายืนยัน (mock)')">ส่งให้ลูกค้ายืนยัน</button>
+              <button class="btn btn-ghost btn-eq"   onclick="alert('ตรวจสถานะ (mock)')">ตรวจสถานะ</button>
+              <button class="btn btn-ghost btn-eq"   onclick="alert('ต่ออายุ (mock)')">ต่ออายุ</button>
+              <button class="btn btn-ghost btn-eq"   onclick="openModal('edit','#121 Supaporn Lee')">ดู/แก้ไข</button>
+              <button class="btn btn-danger btn-eq"  onclick="alert('ลบ (mock)')">ลบ</button>
+            </td>
+          </tr>
+
+          <!-- Expired -->
+          <tr>
+            <td>120</td>
+            <td>-</td>
+            <td>-</td>
+            <td>-</td>
+            <td><div class="plates"><span class="chip">—</span></div></td>
+            <td><span class="badge b-expired"><span class="status-dot dot-expired"></span> Expired</span></td>
+            <td>2025-09-09 17:10</td>
+            <td class="row-actions">
+              <button class="btn btn-outline btn-eq" onclick="alert('ส่งให้ลูกค้ายืนยัน (mock)')">ส่งให้ลูกค้ายืนยัน</button>
+              <button class="btn btn-ghost btn-eq"   onclick="alert('ตรวจสถานะ (mock)')">ตรวจสถานะ</button>
+              <button class="btn btn-ghost btn-eq"   onclick="alert('ต่ออายุ (mock)')">ต่ออายุ</button>
+              <button class="btn btn-ghost btn-eq"   onclick="openModal('edit','#120')">ดู/แก้ไข</button>
+              <button class="btn btn-danger btn-eq"  onclick="alert('ลบ (mock)')">ลบ</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p style="margin:10px 4px;color:var(--muted);font-size:12px">
+      Legend: <span class="badge b-pending">Pending</span>
+      <span class="badge b-success">Success</span>
+      <span class="badge b-expired">Expired</span>
+    </p>
+  </div>
+
+  <!-- modal -->
+  <div class="modal" id="modal">
+    <div class="dialog" role="dialog" aria-modal="true">
+      <div class="dialog-header">
+        <div class="dialog-title" id="dialogTitle">ดู/แก้ไข Order</div>
+        <button class="btn btn-ghost" onclick="closeModal()">ปิด</button>
+      </div>
+
+      <div class="dialog-body">
+        <div class="section">
+          <h3>ข้อมูลลูกค้า</h3>
+          <div class="field">
+            <label class="label">ชื่อ-สกุล</label>
+            <input class="control" placeholder="เช่น สมชาย ดีดี">
+          </div>
+          <div class="grid-2">
+            <div class="field">
+              <label class="label">เบอร์โทร</label>
+              <input class="control" placeholder="0812345678">
+            </div>
+            <div class="field">
+              <label class="label">เลขบัตรประชาชน</label>
+              <input class="control" placeholder="13 หลัก">
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3>ข้อมูลรถ</h3>
+          <div class="grid-2">
+            <div class="field">
+              <label class="label">ยี่ห้อ</label>
+              <input class="control" placeholder="Toyota / Honda ...">
+            </div>
+            <!-- ฟิลด์รุ่น: จะถูกซ่อนเมื่อกด 'เพิ่มรายการ' -->
+            <div class="field" id="field-model-wrapper">
+              <label class="label">รุ่น</label>
+              <input class="control" placeholder="Altis / City ...">
+            </div>
+          </div>
+          <div class="field">
+            <label class="label">เลขตัวถัง</label>
+            <input class="control" placeholder="VIN">
+          </div>
+        </div>
+
+        <div class="section">
+          <h3>เลขทะเบียนที่ต้องการ</h3>
+          <div class="grid-3">
+            <input class="control" placeholder="ป้าย 1 (เช่น 1กก 1234)">
+            <input class="control" placeholder="ป้าย 2">
+            <input class="control" placeholder="ป้าย 3">
+            <input class="control" placeholder="ป้าย 4">
+            <input class="control" placeholder="ป้าย 5">
+            <input class="control" placeholder="ป้าย 6">
+          </div>
+        </div>
+
+        <div class="section">
+          <h3>ระบบ</h3>
+          <div class="field">
+            <label class="label">Session</label>
+            <input class="control" value="AUTO-20250909192018-c0eac3">
+          </div>
+          <div class="grid-2">
+            <div class="field">
+              <label class="label">วันที่สร้าง</label>
+              <input class="control" value="2025-09-09 19:20">
+            </div>
+            <div class="field">
+              <label class="label">สถานะ</label>
+              <select class="control">
+                <option>Pending</option><option>Success</option><option>Expired</option><option>Canceled</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dialog-footer">
+        <button class="btn btn-ghost"  onclick="closeModal()">ยกเลิก</button>
+        <button class="btn btn-primary" onclick="alert('บันทึก (mock)')">บันทึกการเปลี่ยนแปลง</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const modal = document.getElementById('modal');
+  const title = document.getElementById('dialogTitle');
+  const modelWrapper = document.getElementById('field-model-wrapper');
+
+  document.getElementById('btnAdd').addEventListener('click', () => openModal('create','เพิ่มรายการใหม่'));
+
+  function openModal(mode, text){
+    title.textContent = mode==='create' ? 'เพิ่ม Order' : 'ดู/แก้ไข Order ' + (text||'');
+    // ซ่อนฟิลด์ "รุ่น" เมื่อเป็นโหมดเพิ่มรายการ
+    if (modelWrapper){
+      modelWrapper.style.display = (mode === 'create') ? 'none' : 'block';
+    }
+    modal.classList.add('open');
+  }
+  function closeModal(){ modal.classList.remove('open'); }
+  modal.addEventListener('click', (e)=>{ if(e.target===modal) closeModal(); });
+  window.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeModal(); });
+</script>
+</body>
+</html>
